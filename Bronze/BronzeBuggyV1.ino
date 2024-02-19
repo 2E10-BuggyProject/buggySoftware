@@ -47,37 +47,59 @@ void setup() {
 
 void loop() {
 
+  checkTurn();
+  //check for obstacles every x iterations
+  checkObstruction();
+  cycles++;
+  
+}
 
+void startMoving(){
+  
+  digitalWrite(RMOTOR1, HIGH);
+  digitalWrite(RMOTOR2, LOW);
+  digitalWrite(LMOTOR1, HIGH);
+  digitalWrite(LMOTOR2, LOW);
+
+  analogWrite(LSPEEDCTRL, 90);
+  analogWrite(RSPEEDCTRL, 91);
+}
+
+void stopMoving(){
+  digitalWrite(RMOTOR1, LOW);
+  digitalWrite(LMOTOR1, LOW);
+
+}
+
+void checkTurn(){
+  
   leye_state = digitalRead(LEYE);
   reye_state = digitalRead(REYE);
 
-  //right turn condition
+  //left turn condition
   if(leye_state  != track_colour && reye_state == track_colour){
-    //Serial.println("Stopping left");
+    Serial.println("Stopping left");
     //digitalWrite(LMOTOR1, LOW);
-    analogWrite(LSPEEDCTRL, 20);
-    analogWrite(RSPEEDCTRL, 250);
-  }else{
-    //Serial.println("Initializing left");
-    //digitalWrite(LMOTOR1, HIGH);
-    analogWrite(LSPEEDCTRL, 170);
-    analogWrite(RSPEEDCTRL, 160);
-  }
-  //right turn condition
-  if(reye_state  != track_colour && leye_state == track_colour){
-    //Serial.println("Stopping right");
+    analogWrite(LSPEEDCTRL, 10);
+    analogWrite(RSPEEDCTRL, 135);
+  }else if(reye_state  != track_colour && leye_state == track_colour){ // right turn condition
+    Serial.println("Stopping right");
     //digitalWrite(RMOTOR1, LOW);
     analogWrite(RSPEEDCTRL, 10);
-    analogWrite(LSPEEDCTRL, 250);
+    analogWrite(LSPEEDCTRL, 132);
   }else{
-    //Serial.println("Initializing right");
-    //digitalWrite(RMOTOR1, HIGH);
-    analogWrite(LSPEEDCTRL, 170);
-    analogWrite(RSPEEDCTRL, 160);
+    Serial.println("Initializing");
+    //digitalWrite(LMOTOR1, HIGH);
+    analogWrite(LSPEEDCTRL, 90);
+    analogWrite(RSPEEDCTRL, 91);
   }
 
-  //check for obstacles every x iterations
-  if(cycles%10 == 0){
+
+}
+
+void checkObstruction(){
+
+    if(cycles%15 == 0){
     //set trigger low
     digitalWrite( US_TRIG, LOW ); 
     delayMicroseconds(2); 
@@ -99,37 +121,4 @@ void loop() {
     }
 
   }
-  cycles++;
-  
-}
-
-void startMoving(){
-  
-  digitalWrite(RMOTOR1, HIGH);
-  digitalWrite(RMOTOR2, LOW);
-  digitalWrite(LMOTOR1, HIGH);
-  digitalWrite(LMOTOR2, LOW);
-
-  analogWrite(LSPEEDCTRL, 170);
-  analogWrite(RSPEEDCTRL, 160);
-}
-
-void stopMoving(){
-  digitalWrite(RMOTOR1, LOW);
-  digitalWrite(LMOTOR1, LOW);
-
-}
-
-void checkObstruction(){
-
-    digitalWrite( US_TRIG, LOW ); 
-    delayMicroseconds(2); 
-    
-    digitalWrite( US_TRIG, HIGH ); 
-    delayMicroseconds( 10 ); 
-    digitalWrite( US_TRIG, LOW ); 
-    duration = pulseIn( US_ECHO, HIGH ); 
-    Serial.println(duration);
-    Serial.println(distance);
-    distance = (duration/2.0) / 29.1;
 }
