@@ -78,7 +78,7 @@ void loop() {
     if(keepMoving){
       checkTurn();
       //check for obstacles every x iterations
-      checkObstruction();
+      checkObstruction(client);
       cycles++;
 
     }else if(!keepMoving){
@@ -131,7 +131,7 @@ void checkTurn(){
 
 }
 
-void checkObstruction(){
+void checkObstruction(WiFiClient client){
 
     if(cycles%15 == 0){
     //set trigger low
@@ -149,11 +149,11 @@ void checkObstruction(){
 
     if(distance<10){
       stopMoving();
-      //client.println("Obstruction!");
+      client.println("Obstruction!");
     }else{
       digitalWrite(RMOTOR1, HIGH);
       digitalWrite(LMOTOR1, HIGH);
-      //client.println("Moving off");
+      client.println("Moving off");
     }
 
   }
