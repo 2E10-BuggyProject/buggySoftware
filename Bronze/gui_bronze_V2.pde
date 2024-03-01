@@ -72,7 +72,9 @@ background(0);
   //text("Y1 GUI", 50, 80);
   // for aduino
   data = myclient.readString();
+if (data!=null) {
  println(data);
+}
  delay(1000);
  
 }
