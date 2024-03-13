@@ -8,6 +8,7 @@ ControlP5 p5;
 Button GOButton;
 Button STOPButton;
 Knob ModeKnob; 
+RadioButton CruiseModes; 
 Textfield textbox;
 Textarea textoutput;
 Println console;
@@ -15,6 +16,7 @@ Client myclient;
 PFont font, pFont;
 String data, obs_seen = "clear";
 String input;  // for the switch, just to check 
+
 
 
 void setup() {
@@ -59,7 +61,14 @@ void setup() {
                .setColorBackground(color(255, 255, 255))
                .setColor(color(0));  
                
-  console = p5.addConsole(textoutput);              
+  console = p5.addConsole(textoutput);     
+  
+  CruiseModes = p5.addRadioButton("CruiseModes")
+                  .setSize(25,25)
+                  .setPosition(900, 400)
+                  .addItem("LOW", 0.3)
+                  .addItem("MEDIUM", 0.6)
+                  .addItem("FAST", 1); 
             
   myclient = new Client(this, "172.20.10.3", 5200);
   myclient.write("connecting");
@@ -121,9 +130,15 @@ public void controlEvent(ControlEvent event) {
       println("Buggy OFF button pressed");
       myclient.write("s");
     }
-   
+  
   }
-
+  
+  if(event.isGroup() && event.getName().equals("CruiseModes")) {
+    println("Cruising at: " , event.getValue());
+    myclient.write("event.getValue()"); 
+    
+  }
+  
   String inputText = textbox.getText();
   if (inputText.equals("go")) {
     println("Buggy ON button pressed");
