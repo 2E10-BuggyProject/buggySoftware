@@ -1,3 +1,8 @@
+/*************************************************************************************
+ 2E10 Silver Submission Group Y1
+ Ruairi Mullally, Shane McDermott, Noah Savage, Labiba Mansur
+*************************************************************************************/
+
 
 #include <WiFiS3.h>
 //network settings
@@ -17,57 +22,51 @@ const int LMOTOR2 = 8;
 //motor PWM speed controlls
 const int LSPEEDCTRL = 6;
 const int RSPEEDCTRL = 5;
-//ultra-sonic sensor trigger and echo pins
+//ultra-sonic sensor trigger and echo pins for obstacle detection
 const int US_TRIG = 9;
 const int US_ECHO = 13;
-
+//IR sensor states
 bool leye_state = 0;//high when sees black, updates in loop
 bool reye_state = 0;
 bool track_colour; // initializes to the surrounding IR read
 
 double distance = 0; //distance to obstruction
 long duration; //used to calculate distance for stop condition
-
 int cycles = 0; //how often to check for obstructions
+
 //instruction params
 char instruction, carry_out;
 bool keepMoving = false, same_obstruction = false;
 //wheel encoders
 const int RW_ENC = 2;
 const int LW_ENC = 3;
-volatile int r_wheel_d = 0;
+volatile int r_wheel_d = 0;//wheel encoder falling signal counter
 volatile int l_wheel_d = 0;
-
+//control wheel speed with PID
 int PWM_speed = 100, global_speed = 100;
 bool control_mode = 0;
-
-
+//log travel distance
 double prev_dist = 0;
 double distance_travelled = 0;
-
-
-
+//follow PID constants (will differ based on buggy weight, etc.)
 double kp = 5; // proportional constant
 double ki = 0; // integral const
 double kd = -3; // derivative const
-
+//speed PID constants
 double Skp = 1; // proportional constant
 double Ski = 0; // integral const
 double Skd = 0.5; // derivative const
-
+//PID error calc
 unsigned long currentTime, previousTime;
 double elapsedTime;
 double error = 0, last_error = 0;
 double input, output, set_point = 20;
 double cum_error = 0, rate_error = 0;
-
-double sprev_dist = 0;
-double sdistance_travelled = 0;
+//buggy speed calc params
 double buggy_speed = 0;
-
 unsigned long START = millis();
-double dist1 = 0;
-float reference_speed = 20.0;
+double dist1 = 0;//used to calculate buggy speed
+float reference_speed = 20.0;//set remotely from GUI
 
 
 void setup() {
@@ -102,11 +101,10 @@ void setup() {
 }
 
 void loop() {
-
   cycles++;
   client = server.available();
 
-  if(client.available()){
+  if(client.available()){//if client has message to read
     instruction = client.read();
     Serial.println("Reading client.");
     
@@ -117,85 +115,48 @@ void loop() {
     if(instruction == 'n'){
       String sinstruction = client.readStringUntil('n');
       reference_speed = sinstruction.toFloat();
+      Serial.print("\nNew reference speed set: ");
       Serial.println(reference_speed);
     }
   }
 
-  
-
-  if(carry_out == 'w'){
+  if(carry_out == 'w'){//stop or go instruction from GUI
     keepMoving = true;
   } else if(carry_out == 's'){
     keepMoving = false;
     stopMoving();
   }
 
-
-  // if(keepMoving == true){
-
-
-  //     computePID(distance);
-  //     checkTurn();
-  //     checkObstruction();
-  //     distanceReport();
-      
-  //   }else{
-  //     stopMoving();
-  //   }
-
-  
-
   if(keepMoving == true){
 
-    if(control_mode == 0){
+    if(control_mode == 0){//distance follow control mode
       computePID(distance);
       checkTurn();
       checkObstruction();
       distanceReport();
       
-    }else if(control_mode == 1){
+    }else if(control_mode == 1){//reference speed control mode
       speedComputePID(buggy_speed);
       checkTurn();
       checkObstruction();
       distanceReport();
-    }
-    
+    } 
   }else {
     stopMoving();
   }
-
-  if(cycles%30 == 0){
-    Serial.print("PWM_speed: ");
-    Serial.println(PWM_speed);
-  
-
-  }
-  
   
   //calculate speed
-  if((millis() - START) > 2000){
+  if((millis() - START) >= 2000){
     buggy_speed = (distance_travelled - dist1)/2;
 
     START = millis();
     dist1 = distance_travelled;
 
-     //Serial.println(reference_speed);
-    String stringsss = "bs" + String(buggy_speed);
-    auto mystr = stringsss.c_str();
-    client.write(mystr);
+    //send buggy speed to client for GUI
+    auto tosend = ("bs" + String(buggy_speed)).c_str();
+    client.write(tosend);
 
   }
-
-
-
-  //  Serial.print("buggy_speed: ");
-  //  Serial.println(buggy_speed);
-
-  //  Serial.print("distance_travelled: ");
-  //  Serial.println(distance_travelled);
-
- 
-
 }
 
 void startMoving(){
@@ -223,7 +184,7 @@ void checkTurn(){
   //left turn condition
   if(leye_state  != track_colour && reye_state == track_colour){//left turn condition
     analogWrite(LSPEEDCTRL, 10);
-    analogWrite(RSPEEDCTRL, (1.3*global_speed) + 10 );
+    analogWrite(RSPEEDCTRL, (1.3*global_speed) + 10 ); // right motor weaker than left motor
   }else if(reye_state  != track_colour && leye_state == track_colour){ // right turn condition
     analogWrite(RSPEEDCTRL, 10);
     analogWrite(LSPEEDCTRL, (1.3*global_speed));
@@ -235,7 +196,7 @@ void checkTurn(){
 
 void checkObstruction(){
 
-    if(cycles%15 == 0){
+    if(cycles%15 == 0){//as process is quite time intensive, only do every 15 cycles
     //set trigger low
     digitalWrite( US_TRIG, LOW ); 
     delayMicroseconds(2); 
@@ -251,7 +212,7 @@ void checkObstruction(){
   
       stopMoving();
       if(!same_obstruction){
-        client.write("O");
+        client.write("O"); //inform client
         same_obstruction = true;
       }
       
@@ -259,140 +220,104 @@ void checkObstruction(){
       digitalWrite(RMOTOR1, HIGH);
       digitalWrite(LMOTOR1, HIGH);
       same_obstruction = false;
-      client.write("+");
+      client.write("+");//inform moving off
     }
   }
 
   
 
-  if(cycles%50==0){
+  if(cycles%50==0){ // every 50 cycles send distance to object ahead
     Serial.println(distance);
     auto tosend = ("us" + String(distance)).c_str();
     client.write(tosend);
 
 
-  if(distance > 70){
-      control_mode = 1;
-      client.write("01");//client changed
-  }else if(distance < 70){
-      control_mode = 0;
-      client.write("00");
-  }
-
+    if(distance > 70){//if no objects in range switch to reference speed
+        control_mode = 1;
+        client.write("01");//inform client of mode change
+    }else if(distance < 70){//otherwise switch to follow mode
+        control_mode = 0;
+        client.write("00");
+    }
   }
 }
 
-void updateRwEnc(){
+void updateRwEnc(){//add count to right wheel encoder
   r_wheel_d += 1;
 }
 
-void updateLwEnc(){
+void updateLwEnc(){//add count to left wheel encoder
   l_wheel_d += 1;
 }
 
 
-void distanceReport(){
+void distanceReport(){ //calculates distance travelled and informs client
   
-
-
-  double avg_revs = (0.5 * (r_wheel_d + l_wheel_d)) / 8;
-  distance_travelled = avg_revs * 20.6;
+  double avg_revs = (0.5 * (r_wheel_d + l_wheel_d)) / 8;//8 magnets ineach wheel encoder
+  distance_travelled = avg_revs * 20.6;//wheel circumference
   
   if(distance_travelled - prev_dist >= 36){
     prev_dist = distance_travelled;
-
 
     auto tosend = ("d" + String(distance_travelled)).c_str();
     client.write(tosend);
 
   }
-  
 }
 
 
-
-
-void computePID(int US_read){
+void computePID(int US_read){//distance follow PID
 
   if(cycles % 15 ==0){
 
-  currentTime = millis();                //get current time
-  elapsedTime = (double)(currentTime - previousTime);
+    currentTime = millis();                //get current time
+    elapsedTime = (double)(currentTime - previousTime);
 
-  error = US_read - set_point;
-  cum_error += error * elapsedTime;                // compute integral
-  rate_error = (error - last_error)/elapsedTime;   // compute derivative
+    error = US_read - set_point;
+    cum_error += error * elapsedTime;                // compute integral
+    rate_error = (error - last_error)/elapsedTime;   // compute derivative
 
-  double out = kp*error + ki*cum_error + kd*rate_error;                //PID output               
+    double out = kp*error + ki*cum_error + kd*rate_error;                //PID output               
 
-  last_error = error;                                //remember current error
-  previousTime = currentTime;                        //remember current time
+    last_error = error;                                //remember current error
+    previousTime = currentTime;                        //remember current time
 
-  //Serial.println(out);
+    PWM_speed += out;
 
-  PWM_speed += out;
+    if(PWM_speed < 70){//speed bounds for stability
+      PWM_speed = 70;
+    }else if(PWM_speed > 130){
+      PWM_speed = 130;
+    }
 
-  if(PWM_speed < 70){
-    PWM_speed = 70;
-  }else if(PWM_speed > 130){
-    PWM_speed = 130;
+    global_speed = PWM_speed;
   }
-
-  global_speed = PWM_speed;
-
-
-  //Serial.print(PWM_speed);
-  //buggy_speed
-  }
-
-  
-  
 }
 
 
-void sendData(){
- //distance from sensor
- //mode of control
- //ref speed/
- //buggy speed
- //distance travelled
+void speedComputePID(float SPEED_read){//ref speed PID
 
+  if((millis() - START) > 2000){
+
+    currentTime = millis();                //get current time
+    elapsedTime = (double)(currentTime - previousTime);
+
+    error = SPEED_read - reference_speed;
+    cum_error += error * elapsedTime;                // compute integral
+    rate_error = (error - last_error)/elapsedTime;   // compute derivative
+
+    double out = Skp*error + Ski*cum_error + Skd*rate_error;                //PID output               
+
+    last_error = error;                                //remember current error
+    previousTime = currentTime;                        //remember current time
+
+    PWM_speed -= out;
+
+    if(PWM_speed < 70){//speed bounds for stability
+      PWM_speed = 70;
+    }else if(PWM_speed > 150){
+      PWM_speed = 150;
+    }
+    global_speed = PWM_speed; 
+  }  
 }
-
-void speedComputePID(float SPEED_read){
-
- if((millis() - START) > 2000){
-
-  currentTime = millis();                //get current time
-  elapsedTime = (double)(currentTime - previousTime);
-
-
-  error = SPEED_read - reference_speed;
-  cum_error += error * elapsedTime;                // compute integral
-  rate_error = (error - last_error)/elapsedTime;   // compute derivative
-
-  double out = Skp*error + Ski*cum_error + Skd*rate_error;                //PID output               
-
-  last_error = error;                                //remember current error
-  previousTime = currentTime;                        //remember current time
-  //sprev_dist = sdistance_travelled;
-
-  //Serial.println(out);
-
-  PWM_speed -= out;
-
-  if(PWM_speed < 70){
-    PWM_speed = 70;
-  }else if(PWM_speed > 140){
-    PWM_speed = 140;
-  }
-    
-
-  } 
-  global_speed = PWM_speed;
-  
-}
-
-
-
-
