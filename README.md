@@ -42,3 +42,20 @@ Overall goal of bronze: traverse a 3m track, stop for obstacles, report events w
   2. via reference object placed in sight of the ultrasonic distance sensor.
 - The object is moving forward at varying speeds.
 - The telemetry reported back to the GUI should contain the distance of the object, the current mode of control, the current reference speed, and the current speed of the buggy.
+
+
+
+## Gold 
+Design an autonomous buggy capable of navigating a more complex line-following course. Will have to navigate junctions and change behaviour based on tags placed on the course. 
+
+Tags:
+ - Train the autonomous buggy to recognize and interpret four different April tags. These tags should be readable by the HuskyLens vision sensor.
+ - The tags will encode instructions to the buggies during the challenge.
+ - The positioning of the tags on the course will be done by the challenge assessor.
+ - The tags should be used to generate the behaviours below as the buggy drives towards and recognises them. 
+ 
+Features:
+ - Turn left at the next junction
+ - Turn right at the next junction
+ - Observe a Speed Limit (the buggy should adopt a slower speed by the time it reaches this marker)
+ - Go as Fast as Possible (the buggy should be moving as fast as it can safely do so once it reaches this sign)
