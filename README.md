@@ -59,3 +59,7 @@ Features:
  - Turn right at the next junction
  - Observe a Speed Limit (the buggy should adopt a slower speed by the time it reaches this marker)
  - Go as Fast as Possible (the buggy should be moving as fast as it can safely do so once it reaches this sign)
+
+
+
+<img src="https://github.com/2E10-BuggyProject/buggySoftware/assets/123960178/2762a4f7-27f9-4d77-8f2f-b3fd065242b1" width="400" />
