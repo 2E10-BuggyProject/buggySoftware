@@ -1,6 +1,9 @@
 /*************************************************************************************
- 2E10 Gold Submission Group Y1 - in progress
+ 2E10 Gold Submission Group Y1 
  Ruairi Mullally, Shane McDermott, Noah Savage, Labiba Mansur
+
+ Gold version has follow mode ommitted, as april tags would be detected and cause the 
+ buggy to stop moving.
 *************************************************************************************/
 
 //computer vision camera lib
@@ -8,7 +11,8 @@
 #include "SoftwareSerial.h"
 
 HUSKYLENS huskylens;
-int tag_id = 0;
+int tag_id = 0; //april tag id
+bool turning_left = false, turning_right = false;
 
 #include <WiFiS3.h>
 //network settings
@@ -59,7 +63,7 @@ double kp = 5; // proportional constant
 double ki = 0; // integral const
 double kd = -3; // derivative const
 //speed PID constants
-double Skp = 1; // proportional constant
+double Skp = 1.0; // proportional constant
 double Ski = 0; // integral const
 double Skd = 0.5; // derivative const
 //PID error calc
@@ -72,7 +76,7 @@ double cum_error = 0, rate_error = 0;
 double buggy_speed = 0;
 unsigned long START = millis();
 double dist1 = 0;//used to calculate buggy speed
-float reference_speed = 20.0;//set remotely from GUI
+float reference_speed = 25.0;//set remotely from GUI
 
 
 void setup() {
@@ -115,11 +119,11 @@ void loop() {
     instruction = client.read();
     Serial.println("Reading client.");
     
-    if(instruction == 'w' || instruction == 's'){
+    if(instruction == 'w' || instruction == 's'){//movement instructions
       carry_out = instruction;
     }
 
-    if(instruction == 'n'){
+    if(instruction == 'n'){//reference speed set
       String sinstruction = client.readStringUntil('n');
       reference_speed = sinstruction.toFloat();
       Serial.print("\nNew reference speed set: ");
@@ -136,20 +140,12 @@ void loop() {
 
   if(keepMoving == true){
 
-    if(control_mode == 0){//distance follow control mode
-      computePID(distance);
-      checkTurn();
-      checkObstruction();
-      detectTags();
-      distanceReport();
-      
-    }else if(control_mode == 1){//reference speed control mode
-      speedComputePID(buggy_speed);
-      checkTurn();
-      checkObstruction();
-      detectTags();
-      distanceReport();
-    } 
+    speedComputePID(buggy_speed);
+    checkTurn();
+    checkObstruction();
+    detectTags();
+    distanceReport();
+    
   }else {
     stopMoving();
   }
@@ -190,8 +186,16 @@ void checkTurn(){
   leye_state = digitalRead(LEYE);
   reye_state = digitalRead(REYE);
 
-  //left turn condition
-  if(leye_state  != track_colour && reye_state == track_colour){//left turn condition
+
+  if(leye_state  != track_colour && reye_state != track_colour && turning_left == true){//left turn condition for intersection
+    analogWrite(LSPEEDCTRL, 10);
+    analogWrite(RSPEEDCTRL, (1.3*global_speed) + 10 ); // right motor weaker than left motor
+    Serial.println("Turning left from tag");
+  } else if(leye_state  != track_colour && reye_state != track_colour && turning_right == true){//right turn condition for intersection
+    analogWrite(RSPEEDCTRL, 10);
+    analogWrite(LSPEEDCTRL, (1.3*global_speed));
+    Serial.println("Turning right from tag");
+  }else if(leye_state  != track_colour && reye_state == track_colour){//left turn condition
     analogWrite(LSPEEDCTRL, 10);
     analogWrite(RSPEEDCTRL, (1.3*global_speed) + 10 ); // right motor weaker than left motor
   }else if(reye_state  != track_colour && leye_state == track_colour){ // right turn condition
@@ -324,8 +328,8 @@ void speedComputePID(float SPEED_read){//ref speed PID
 
     if(PWM_speed < 70){//speed bounds for stability
       PWM_speed = 70;
-    }else if(PWM_speed > 170){
-      PWM_speed = 170;
+    }else if(PWM_speed > 160){
+      PWM_speed = 160;
     }
     global_speed = PWM_speed; 
   } 
@@ -343,7 +347,8 @@ void initialiseHusky(){
   }
 }
 
-void detectTags(){
+
+void detectTags(){//detects april tag id and updates instructions
 
   if (huskylens.request() && huskylens.isLearned() && huskylens.available())
   {
@@ -354,27 +359,31 @@ void detectTags(){
 
   switch(tag_id){
     
-    case 1:
-    Serial.println("case 1");
-    reference_speed = 35;
+    case 1://speed up
+    //Serial.println("case 1");
+    reference_speed = 20;
     break;
 
-    case 2:
-    Serial.println("case 2");
-    reference_speed = 12;
+    case 2://slow down
+    //Serial.println("case 2");
+    reference_speed = 10;
     break;
 
-    case 3:
-    Serial.println("case 3");
+    case 3: // turn left at next intersection
+    //Serial.println("case 3");
+    turning_right = false;
+    turning_left = true;
     break;
 
-    case 4:
-    Serial.println("case 4");
+    case 4: // turn right at next intersection
+    //Serial.println("case 4");
+    turning_right = true;
+    turning_left = false;
     break;
 
     default:
 
-    Serial.println("No tag detected");
+    //Serial.println("No tag detected");
     break;
   }
   tag_id = 0;
